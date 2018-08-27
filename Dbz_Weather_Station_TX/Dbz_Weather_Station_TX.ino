@@ -6,14 +6,14 @@
 #include "RF24.h"
 
 //Defines
-#define DHT_PIN 2
 #define CE_PIN 7
 #define CSN_PIN 8
+#define DHT_PIN 2
 #define DHTTYPE DHT22
 
 //Variables
-float hum;
 float temp;
+float hum;
 float pres_raw;
 float pres;
 
@@ -39,8 +39,8 @@ void loop() {
   delay(2000);
 
   //Collect values
-  hum = dht.readHumidity();
   temp = dht.readTemperature();
+  hum = dht.readHumidity();  
   pres_raw = bmp.readPressure();
   pres = pres_raw / 100;
   
@@ -57,8 +57,8 @@ void loop() {
   }
 
   //Sending values
-  msg[0] = hum;
-  msg[1] = temp;
+  msg[0] = temp;
+  msg[1] = hum;
   msg[2] = pres;  
   radio.write(msg, 12);  
     
