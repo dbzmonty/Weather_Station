@@ -36,7 +36,7 @@ void setup() {
 
 void loop() {
 
-  delay(2000);
+  delay(60000);
 
   //Collect values
   temp = dht.readTemperature();
