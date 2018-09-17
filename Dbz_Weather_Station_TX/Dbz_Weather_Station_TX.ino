@@ -9,6 +9,7 @@
 #define CE_PIN 7
 #define CSN_PIN 8
 #define DHT_PIN 2
+#define POWER_PIN A0
 #define DHTTYPE DHT22
 
 //Variables
@@ -16,8 +17,9 @@ float temp;
 float hum;
 float pres_raw;
 float pres;
+float power;
 
-float msg[3];
+float msg[4];
 const uint64_t pipe = 0xE8E8F0F0E1LL;
 
 //ETC
@@ -28,6 +30,7 @@ RF24 radio(CE_PIN, CSN_PIN);
 void setup() {
     
   Serial.begin(9600); 
+  pinMode(POWER_PIN,INPUT);
   dht.begin();
   bmp.begin();
   radio.begin();
@@ -43,6 +46,7 @@ void loop() {
   hum = dht.readHumidity();  
   pres_raw = bmp.readPressure();
   pres = pres_raw / 100;
+  power = analogRead(POWER_PIN) * (5.0 / 1023.0);
   
   //Check DHT values
   if (isnan(hum) || isnan(temp)) {
@@ -60,8 +64,10 @@ void loop() {
   msg[0] = temp;
   msg[1] = hum;
   msg[2] = pres;  
-  radio.write(msg, 12);  
-    
+  msg[3] = power;
+  radio.write(msg, 16);  
+
+  /*
   Serial.print("Temperature: "); 
   Serial.print(temp);
   Serial.println(" *C");
@@ -70,8 +76,9 @@ void loop() {
   Serial.println(" %");
   Serial.print("Air pressure: "); 
   Serial.print(pres);
-  Serial.println(" hPa");  
-  
+  Serial.println(" hPa"); 
+  Serial.print("Power: ");  
+  Serial.println(power);  
   Serial.println("**********************");
-
+  */
 }

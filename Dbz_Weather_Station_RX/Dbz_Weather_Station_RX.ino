@@ -23,9 +23,9 @@ const char* server = "api.thingspeak.com";
 const int postingInterval = 30; // * 10 seconds
 const int measuringInterval = 10 * 1000;
 int measuringCounter = 0;
-float msg[3];
-float in_temp, in_hum, out_temp, out_hum, pres;
-float in_temp_changed, in_hum_changed, out_temp_changed, out_hum_changed, pres_changed;
+float msg[4];
+float in_temp, in_hum, out_temp, out_hum, pres, power;
+float in_temp_changed, in_hum_changed, out_temp_changed, out_hum_changed, pres_changed, power_changed;
 
 //ETC
 Adafruit_SSD1306 display(OLED_RESET);
@@ -82,6 +82,7 @@ void CollectingValues() {
     out_temp = msg[0];
     out_hum = msg[1];
     pres = msg[2];    
+    power = msg[3];
   }
 }
 
@@ -89,7 +90,6 @@ void SendDatasToWifi() {
 
   if (client.connect(server, 80)) {
         
-    // Construct API request body
     String body = "field1=";
            body += String(in_temp);
            body += "&field2=";
@@ -100,6 +100,8 @@ void SendDatasToWifi() {
            body += String(out_hum);
            body += "&field5=";
            body += String(pres);
+           body += "&field6=";
+           body += String(power);
 
     client.println("POST /update HTTP/1.1");
     client.println("Host: api.thingspeak.com");
@@ -120,7 +122,8 @@ boolean CheckDifferences() {
         (in_hum_changed   != in_hum)   ||
         (out_temp_changed != out_temp) ||
         (out_hum_changed  != out_hum)  ||
-        (pres_changed     != pres) )    
+        (pres_changed     != pres)     || 
+        (power_changed    != power) )
     return true;    
   else 
     return false;
