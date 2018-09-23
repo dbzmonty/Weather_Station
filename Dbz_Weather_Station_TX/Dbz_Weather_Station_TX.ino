@@ -10,6 +10,7 @@
 #define CSN_PIN 8
 #define DHT_PIN 2
 #define POWER_PIN A0
+#define NRF_POWER_PIN 6
 #define DHTTYPE DHT22
 
 //Variables
@@ -31,16 +32,20 @@ void setup() {
     
   Serial.begin(9600); 
   pinMode(POWER_PIN,INPUT);
+  pinMode(NRF_POWER_PIN,OUTPUT);
+  turnOnNRF();
   dht.begin();
   bmp.begin();
   radio.begin();
-  radio.openWritingPipe(pipe);
+  radio.openWritingPipe(pipe);  
+  turnOffNRF();
 }
 
 void loop() {
 
   delay(60000);
 
+  turnOnNRF();
   //Collect values
   temp = dht.readTemperature();
   hum = dht.readHumidity();  
@@ -67,6 +72,8 @@ void loop() {
   msg[3] = power;
   radio.write(msg, 16);  
 
+  turnOffNRF();
+
   /*
   Serial.print("Temperature: "); 
   Serial.print(temp);
@@ -81,4 +88,17 @@ void loop() {
   Serial.println(power);  
   Serial.println("**********************");
   */
+}
+
+void turnOnNRF() {
+
+  digitalWrite(NRF_POWER_PIN, HIGH);
+  delay(500);
+}
+
+void turnOffNRF() {
+
+  delay(500);
+  digitalWrite(NRF_POWER_PIN, LOW);
+  delay(500);
 }
