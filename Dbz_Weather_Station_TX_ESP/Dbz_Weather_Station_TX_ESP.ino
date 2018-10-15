@@ -71,7 +71,7 @@ void setup() {
   
   delay(100);
 
-  ESP.deepSleep(60 * 1000000);
+  ESP.deepSleep(600 * 1000000);
 }
 
 void loop() { }

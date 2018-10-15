@@ -6,6 +6,7 @@
 #include "RF24.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <RtcDS3231.h>
 
 //Defines
 #define CE_PIN D4
@@ -20,15 +21,18 @@ const char* password = "19850317";
 const int channelID = 574312;
 String writeAPIKey = "WTLF6EM99QTS05R6";
 const char* server = "api.thingspeak.com";
-const int postingInterval = 30; // * 10 seconds
+const int postingInterval = 60; // * 10 seconds
 const int measuringInterval = 10 * 1000;
 int measuringCounter = 0;
 float msg[4];
 float in_temp, in_hum, out_temp, out_hum, pres, power;
 float in_temp_changed, in_hum_changed, out_temp_changed, out_hum_changed, pres_changed, power_changed;
+int year, month, day, hour, minute, minute_changed;
+
 
 //ETC
 Adafruit_SSD1306 display(OLED_RESET);
+RtcDS3231<TwoWire> rtc(Wire);
 DHTesp dht;
 RF24 radio(CE_PIN, CSN_PIN);
 WiFiClient client;
@@ -41,15 +45,19 @@ void setup() {
   radio.begin();
   radio.openReadingPipe(1,pipe);
   radio.startListening();  
+  rtc.Begin();        
+  rtc.Enable32kHzPin(false);
+  rtc.SetSquareWavePin(DS3231SquareWavePin_ModeNone); 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.setRotation(1);
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.clearDisplay();
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    display.setCursor(5, 5);
-    display.print("Connecting...");
+  while (WiFi.status() != WL_CONNECTED) {    
+    display.println("CONNECTING");
+    display.println("TO");
+    display.println(ssid);
     display.display();
     delay(500);
   }
@@ -71,9 +79,16 @@ void loop() {
 
 void CollectingValues() {
 
-  //IN values
+  //IN DHT values  
   in_temp = dht.getTemperature();
   in_hum = dht.getHumidity();
+  //IN RTC values
+  RtcDateTime now = rtc.GetDateTime();
+  year = now.Year();
+  month = now.Month();
+  day = now.Day();
+  hour = now.Hour();
+  minute = now.Minute();
   
   //OUT values
   if( radio.available()) 
@@ -123,7 +138,8 @@ boolean CheckDifferences() {
         (out_temp_changed != out_temp) ||
         (out_hum_changed  != out_hum)  ||
         (pres_changed     != pres)     || 
-        (power_changed    != power) )
+        (power_changed    != power)    ||
+        (minute_changed   != minute)   )
     return true;    
   else 
     return false;
@@ -138,24 +154,88 @@ void RefreshDisplay() {
   display.drawLine(0, 0, 63, 0, WHITE);
   display.drawLine(63, 0, 63, 127, WHITE);
   display.drawLine(63, 127, 0, 127, WHITE);
-  display.drawLine(0, 127, 0, 00, WHITE);  
-  display.drawLine(0, 42, 63, 42, WHITE);
-  display.drawLine(0, 84, 63, 84, WHITE);
-  display.drawLine(31, 0, 31, 84, WHITE);
-  
+  display.drawLine(0, 127, 0, 0, WHITE);    
+  display.drawLine(0, 34, 63, 34, WHITE);
+  display.drawLine(0, 65, 63, 65, WHITE);
+    
   //Display the numbers
-  display.setCursor(5, 15);
-  display.print(in_temp, 1);
-  display.setCursor(5, 55);
-  display.print(in_hum, 1);
-  display.setCursor(35,15);
-  display.print(out_temp, 1);
-  display.setCursor(35,55);
-  display.print(out_hum, 1);
-  display.setCursor(12,100);
-  display.print(pres, 1);
   
+  //Hour, Minute
+  if (hour < 10)
+  {
+    if (minute < 10)
+    {
+      display.setCursor(19, 8);
+      display.print(String(hour) + String(":0") + String(minute));
+    }
+    else
+    {
+      display.setCursor(19, 8);
+      display.print(String(hour) + String(":") + String(minute));
+    }    
+  }
+  else
+  {
+    if (minute < 10)
+    {
+      display.setCursor(15, 8);
+      display.print(String(hour) + String(":0") + String(minute));
+    }
+    else
+    {
+      display.setCursor(15, 8);
+      display.print(String(hour) + String(":") + String(minute));
+    }    
+  }
+  
+  //Year, Month, Day
+  if (month < 10)
+  {
+    if (day < 10)
+    {
+      display.setCursor(3, 22);
+      display.print(String(year) + String(".0") + String(month) + String(".0") + String(day));
+    }
+    else
+    {
+      display.setCursor(3, 22);
+      display.print(String(year) + String(".0") + String(month) + String(".") + String(day));
+    }
+  }
+  else
+  {
+    if (day < 10)
+    {
+      display.setCursor(3, 22);
+      display.print(String(year) + String(".") + String(month) + String(".0") + String(day));
+    }
+    else
+    {
+      display.setCursor(3, 22);
+      display.print(String(year) + String(".") + String(month) + String(".") + String(day));
+    }
+  }  
+  
+  //Weather
+  display.setCursor(13, 39);
+  display.print("INDOOR");
+  display.setCursor(15, 53);
+  display.print(String(in_temp, 1) + String(" C"));
+  display.setCursor(11, 70);
+  display.print("OUTDOOR");
+  display.setCursor(15, 84);
+  display.print(String(out_temp, 1) + String(" C"));
+  display.setCursor(15, 98);
+  display.print(String(out_hum, 1) + String(" %"));
+  if ((0.0 < power) && (power < 3.3))
+  {
+    display.setCursor(11, 112);
+    display.print("BATTERY");
+  }
+  else
+  {
+    display.setCursor(3, 112);
+    display.print(String(pres, 1) + String(" hPa"));
+  }
   display.display();
 }
-
-
