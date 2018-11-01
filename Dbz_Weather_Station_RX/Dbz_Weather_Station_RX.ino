@@ -53,11 +53,13 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.clearDisplay();
+  display.println("CONNECTING");
+  display.println();
+  display.println(ssid);
+  display.println();
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {    
-    display.println("CONNECTING");
-    display.println("TO");
-    display.println(ssid);
+  while (WiFi.status() != WL_CONNECTED) {
+    display.print(".");
     display.display();
     delay(500);
   }
