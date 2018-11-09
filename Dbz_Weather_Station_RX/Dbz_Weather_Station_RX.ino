@@ -24,6 +24,8 @@ const char* server = "api.thingspeak.com";
 const int postingInterval = 60; // * 10 seconds
 const int measuringInterval = 10 * 1000;
 int measuringCounter = 0;
+int connectingCounter = 0;
+bool isWiFiConnected = false;
 float msg[4];
 float in_temp, in_hum, out_temp, out_hum, pres, power;
 float in_temp_changed, in_hum_changed, out_temp_changed, out_hum_changed, pres_changed, power_changed;
@@ -58,11 +60,17 @@ void setup() {
   display.println(ssid);
   display.println();
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    display.print(".");
+  while ((WiFi.status() != WL_CONNECTED) && (connectingCounter < 10))
+  {
+    display.print(".");    
     display.display();
     delay(500);
+    connectingCounter++;
   }
+  if (WiFi.status() == WL_CONNECTED)
+    {
+      isWiFiConnected = true;
+    }
   display.clearDisplay();
 }
 
@@ -71,7 +79,10 @@ void loop() {
   CollectingValues();
   if ( measuringCounter == postingInterval ) 
   {
-    SendDatasToWifi(); 
+    if (isWiFiConnected)
+    {
+      SendDatasToWifi();   
+    }    
     measuringCounter = 0;
   }
   if ( CheckDifferences() ) { RefreshDisplay(); }
