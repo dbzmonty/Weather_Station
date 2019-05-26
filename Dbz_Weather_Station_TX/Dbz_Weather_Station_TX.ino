@@ -1,104 +1,63 @@
 //Includes
 #include <SPI.h>
 #include <Wire.h>
-#include "DHT.h"
+#include <ESP8266WiFi.h>
+#include "DHTesp.h"
 #include <Adafruit_BMP085.h>
 #include "RF24.h"
 
 //Defines
-#define CE_PIN 7
-#define CSN_PIN 8
-#define DHT_PIN 2
+#define CE_PIN D4
+#define CSN_PIN D8
+#define DHT_PIN D3
 #define POWER_PIN A0
-#define NRF_POWER_PIN 6
-#define DHTTYPE DHT22
 
 //Variables
 float temp;
 float hum;
-float pres_raw;
 float pres;
-float power;
+float rad;
 
 float msg[4];
 const uint64_t pipe = 0xE8E8F0F0E1LL;
 
 //ETC
-DHT dht(DHT_PIN, DHTTYPE);
+DHTesp dht;
 Adafruit_BMP085 bmp;
 RF24 radio(CE_PIN, CSN_PIN);
 
 void setup() {
     
   Serial.begin(9600); 
+  WiFi.mode(WIFI_OFF);
+  WiFi.forceSleepBegin();
   pinMode(POWER_PIN,INPUT);
-  pinMode(NRF_POWER_PIN,OUTPUT);
-  turnOnNRF();
-  dht.begin();
+  dht.setup(DHT_PIN, DHTesp::DHT22);
+  delay(dht.getMinimumSamplingPeriod());
   bmp.begin();
   radio.begin();
   radio.openWritingPipe(pipe);  
-  turnOffNRF();
-}
-
-void loop() {
-
-  delay(60000);
-
-  turnOnNRF();
-  //Collect values
-  temp = dht.readTemperature();
-  hum = dht.readHumidity();  
-  pres_raw = bmp.readPressure();
-  pres = pres_raw / 100;
-  power = analogRead(POWER_PIN) * (5.0 / 1023.0);
+  delay(500);
   
-  //Check DHT values
-  if (isnan(hum) || isnan(temp)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
-
-  //Check BMP values
-  if (isnan(pres)) {
-    Serial.println("Failed to read from BMP sensor!");
-    return;
-  }
-
+  //Collect values
+  temp = dht.getTemperature();
+  hum = dht.getHumidity();
+  pres = bmp.readPressure() / 100;
+  rad = getRadiation();
+   
   //Sending values
   msg[0] = temp;
   msg[1] = hum;
-  msg[2] = pres;  
-  msg[3] = power;
-  radio.write(msg, 16);  
-
-  turnOffNRF();
-
-  /*
-  Serial.print("Temperature: "); 
-  Serial.print(temp);
-  Serial.println(" *C");
-  Serial.print("Humidity: "); 
-  Serial.print(hum);
-  Serial.println(" %");
-  Serial.print("Air pressure: "); 
-  Serial.print(pres);
-  Serial.println(" hPa"); 
-  Serial.print("Power: ");  
-  Serial.println(power);  
-  Serial.println("**********************");
-  */
+  msg[2] = pres;
+  msg[3] = rad;
+  radio.write(msg, 16);
+  
+  delay(100);
+  ESP.deepSleep(60 * 1000000);
 }
 
-void turnOnNRF() {
-
-  digitalWrite(NRF_POWER_PIN, HIGH);
-  delay(500);
+float getRadiation() {  
+  return 0.12;
 }
 
-void turnOffNRF() {
-
-  delay(500);
-  digitalWrite(NRF_POWER_PIN, LOW);
-  delay(500);
-}
+void loop() { }

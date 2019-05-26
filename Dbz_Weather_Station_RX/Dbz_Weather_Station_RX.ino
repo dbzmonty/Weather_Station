@@ -15,22 +15,22 @@
 #define OLED_RESET LED_BUILTIN
 
 //Variables
-const uint64_t pipe = 0xE8E8F0F0E1LL;
-const char* ssid = "Falunet2";
-const char* password = "19850317";
-const int channelID = 574312;
-String writeAPIKey = "WTLF6EM99QTS05R6";
-const char* server = "api.thingspeak.com";
-const int postingInterval = 60; // * 10 seconds
-const int measuringInterval = 10 * 1000;
+uint64_t pipe = 0xE8E8F0F0E1LL;
+char ssid[] = "Falunet2";
+char WifiPassword[] = "19850317";
+
+const int postingInterval = 6; //in every 60 seconds
+const int measuringInterval = 10 * 1000; //in every 10 seconds
+const int outdoorCheckInterval = 8; //must be transmission in 8 times measuring
+int outdoorCheckCounter = 0;
 int measuringCounter = 0;
 int connectingCounter = 0;
 bool isWiFiConnected = false;
+bool isOutdoorUnitOK = false;
 float msg[4];
-float in_temp, in_hum, out_temp, out_hum, pres, power;
-float in_temp_changed, in_hum_changed, out_temp_changed, out_hum_changed, pres_changed, power_changed;
-int year, month, day, hour, minute, minute_changed;
-
+float in_temp, in_hum, out_temp, out_hum, pres, rad;
+float in_temp_prev, in_hum_prev, out_temp_prev, out_hum_prev, pres_prev, rad_prev;
+int year, month, day, hour, minute, minute_prev;
 
 //ETC
 Adafruit_SSD1306 display(OLED_RESET);
@@ -59,7 +59,7 @@ void setup() {
   display.println();
   display.println(ssid);
   display.println();
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid, WifiPassword);
   while ((WiFi.status() != WL_CONNECTED) && (connectingCounter < 10))
   {
     display.print(".");    
@@ -77,17 +77,15 @@ void setup() {
 void loop() {
 
   CollectingValues();
-  if ( measuringCounter == postingInterval ) 
-  {
-    if (isWiFiConnected)
-    {
-      SendDatasToWifi();   
-    }    
-    measuringCounter = 0;
-  }
-  if ( CheckDifferences() ) { RefreshDisplay(); }
+  if (measuringCounter == postingInterval) 
+  {    
+    if (isWiFiConnected) SendDatasToWifi();
+    measuringCounter = 0;    
+  }  
+  if (CheckDifferences()) RefreshDisplay();
   delay(measuringInterval);
   measuringCounter++;
+  ActualizePrevValues();
 }
 
 void CollectingValues() {
@@ -105,57 +103,45 @@ void CollectingValues() {
   
   //OUT values
   if( radio.available()) 
-  {    
+  {
     radio.read( &msg, sizeof(msg) );
     out_temp = msg[0];
     out_hum = msg[1];
     pres = msg[2];    
-    power = msg[3];
+    rad = msg[3];
+    OutdoorTransmissionWasOK();    
   }
+  else
+    OutdoorTransmissionWasNotOK();
 }
 
 void SendDatasToWifi() {
 
-  if (client.connect(server, 80)) {
-        
-    String body = "field1=";
-           body += String(in_temp);
-           body += "&field2=";
-           body += String(in_hum);
-           body += "&field3=";
-           body += String(out_temp);
-           body += "&field4=";
-           body += String(out_hum);
-           body += "&field5=";
-           body += String(pres);
-           body += "&field6=";
-           body += String(power);
-
-    client.println("POST /update HTTP/1.1");
-    client.println("Host: api.thingspeak.com");
-    client.println("User-Agent: ESP8266 (nothans)/1.0");
-    client.println("Connection: close");
-    client.println("X-THINGSPEAKAPIKEY: " + writeAPIKey);
-    client.println("Content-Type: application/x-www-form-urlencoded");
-    client.println("Content-Length: " + String(body.length()));
-    client.println("");
-    client.print(body);
-  }
-  client.stop();    
 }
 
-boolean CheckDifferences() {
+bool CheckDifferences() {
 
-  if (  (in_temp_changed  != in_temp)  ||
-        (in_hum_changed   != in_hum)   ||
-        (out_temp_changed != out_temp) ||
-        (out_hum_changed  != out_hum)  ||
-        (pres_changed     != pres)     || 
-        (power_changed    != power)    ||
-        (minute_changed   != minute)   )
+  if (  (in_temp_prev  != in_temp)  ||
+        (in_hum_prev   != in_hum)   ||
+        (out_temp_prev != out_temp) ||
+        (out_hum_prev  != out_hum)  ||
+        (pres_prev     != pres)     || 
+        (rad_prev      != rad)      ||
+        (minute_prev   != minute)   )
     return true;    
   else 
     return false;
+}
+
+void ActualizePrevValues() {
+  
+  in_temp_prev  = in_temp;
+  in_hum_prev   = in_hum;
+  out_temp_prev = out_temp;
+  out_hum_prev  = out_hum;
+  pres_prev     = pres;
+  rad_prev      = rad;
+  minute_prev   = minute;  
 }
 
 void RefreshDisplay() {
@@ -229,26 +215,52 @@ void RefreshDisplay() {
     }
   }  
   
-  //Weather
+  //Indoor weather
   display.setCursor(13, 39);
   display.print("INDOOR");
   display.setCursor(15, 53);
   display.print(String(in_temp, 1) + String(" C"));
+  //Outdoor weather
   display.setCursor(11, 70);
   display.print("OUTDOOR");
-  display.setCursor(15, 84);
-  display.print(String(out_temp, 1) + String(" C"));
-  display.setCursor(15, 98);
-  display.print(String(out_hum, 1) + String(" %"));
-  if ((0.0 < power) && (power < 3.3))
+  if (isOutdoorUnitOK)
   {
-    display.setCursor(11, 112);
-    display.print("BATTERY");
+    display.setCursor(15, 84);
+    display.print(String(out_temp, 1) + String(" C"));
+    display.setCursor(15, 98);
+    display.print(String(out_hum, 1) + String(" %"));
+    if (0.12 < rad)
+    {
+      display.setCursor(8, 112);
+      display.print(String(rad, 2) + String(" uSV"));
+    }
+    else
+    {
+      display.setCursor(3, 112);
+      display.print(String(pres, 1) + String(" hPa"));
+    }
   }
   else
   {
-    display.setCursor(3, 112);
-    display.print(String(pres, 1) + String(" hPa"));
-  }
+    display.setCursor(9, 98);
+    display.print("NO DATA!");
+  }  
   display.display();
+}
+
+void OutdoorTransmissionWasOK() {
+  
+  outdoorCheckCounter = 0;
+  isOutdoorUnitOK = true;
+}
+
+void OutdoorTransmissionWasNotOK() {
+
+  outdoorCheckCounter++;
+  if (outdoorCheckCounter > outdoorCheckInterval)
+  {
+    isOutdoorUnitOK = false;
+    outdoorCheckCounter = outdoorCheckInterval +1;
+    RefreshDisplay();
+  }
 }
