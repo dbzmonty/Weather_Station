@@ -7,6 +7,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <RtcDS3231.h>
+#include <ESP8266HTTPClient.h>
 
 //Defines
 #define CE_PIN D4
@@ -16,20 +17,21 @@
 
 //Variables
 uint64_t pipe = 0xE8E8F0F0E1LL;
-char ssid[] = "Falunet2";
-char WifiPassword[] = "19850317";
+char ssid[] = "xxx";
+char WifiPassword[] = "xxx";
+char access_code[] = "xxx";
 
-const int postingInterval = 6; //in every 60 seconds
+const int postingInterval = 60; //in every 10 minutes (600 seconds)
 const int measuringInterval = 10 * 1000; //in every 10 seconds
-const int outdoorCheckInterval = 8; //must be transmission in 8 times measuring
+const int outdoorCheckInterval = 30; //must be transmission in 30 times measuring
 int outdoorCheckCounter = 0;
 int measuringCounter = 0;
 int connectingCounter = 0;
 bool isWiFiConnected = false;
 bool isOutdoorUnitOK = false;
-float msg[4];
-float in_temp, in_hum, out_temp, out_hum, pres, rad;
-float in_temp_prev, in_hum_prev, out_temp_prev, out_hum_prev, pres_prev, rad_prev;
+double msg[3];
+double in_temp, in_hum, out_temp, out_hum, pres;
+double in_temp_prev, in_hum_prev, out_temp_prev, out_hum_prev, pres_prev;
 int year, month, day, hour, minute, minute_prev;
 
 //ETC
@@ -37,7 +39,6 @@ Adafruit_SSD1306 display(OLED_RESET);
 RtcDS3231<TwoWire> rtc(Wire);
 DHTesp dht;
 RF24 radio(CE_PIN, CSN_PIN);
-WiFiClient client;
 
 void setup() {
   
@@ -79,13 +80,24 @@ void loop() {
   CollectingValues();
   if (measuringCounter == postingInterval) 
   {    
-    if (isWiFiConnected) SendDatasToWifi();
-    measuringCounter = 0;    
+    if (isWiFiConnected && isOutdoorUnitOK) SendDatasToWifi();
+    measuringCounter = 0;
   }  
   if (CheckDifferences()) RefreshDisplay();
   delay(measuringInterval);
   measuringCounter++;
   ActualizePrevValues();
+  //Debugger();
+}
+
+void Debugger() {
+  
+  Serial.print("measuringCounter: ");
+  Serial.println(measuringCounter);
+  Serial.print("outdoorCheckCounter: ");
+  Serial.println(outdoorCheckCounter);  
+  Serial.print("isOutdoorUnitOK: ");
+  Serial.println(isOutdoorUnitOK);
 }
 
 void CollectingValues() {
@@ -107,9 +119,8 @@ void CollectingValues() {
     radio.read( &msg, sizeof(msg) );
     out_temp = msg[0];
     out_hum = msg[1];
-    pres = msg[2];    
-    rad = msg[3];
-    OutdoorTransmissionWasOK();    
+    pres = msg[2];
+    OutdoorTransmissionWasOK();
   }
   else
     OutdoorTransmissionWasNotOK();
@@ -117,6 +128,35 @@ void CollectingValues() {
 
 void SendDatasToWifi() {
 
+  HTTPClient http;
+  String uri = "http://....../writer.php"; 
+  String data = "?access_code=";
+  data += access_code;
+  data += "&in_temp=";
+  data += in_temp;
+  data += "&in_hum=";
+  data += in_hum;
+  data += "&out_temp=";
+  data += out_temp;
+  data += "&out_hum=";
+  data += out_hum;
+  data += "&pres=";
+  data += pres;
+  
+  bool httpResult = http.begin(uri + data);
+  if (!httpResult) {
+    Serial.println("Invalid HTTP request:");
+    Serial.println(uri + data);
+  }
+  int httpCode = http.GET();
+  if (httpCode > 0) { // Request has been made
+    Serial.printf("HTTP status: %d\n", httpCode);
+    String payload = http.getString();
+    Serial.println(payload);
+  } else { // Request could not be made
+    Serial.printf("HTTP request failed. Error: %s\r\n", http.errorToString(httpCode).c_str());
+  }
+  http.end();
 }
 
 bool CheckDifferences() {
@@ -125,8 +165,7 @@ bool CheckDifferences() {
         (in_hum_prev   != in_hum)   ||
         (out_temp_prev != out_temp) ||
         (out_hum_prev  != out_hum)  ||
-        (pres_prev     != pres)     || 
-        (rad_prev      != rad)      ||
+        (pres_prev     != pres)     ||
         (minute_prev   != minute)   )
     return true;    
   else 
@@ -140,7 +179,6 @@ void ActualizePrevValues() {
   out_temp_prev = out_temp;
   out_hum_prev  = out_hum;
   pres_prev     = pres;
-  rad_prev      = rad;
   minute_prev   = minute;  
 }
 
@@ -229,16 +267,8 @@ void RefreshDisplay() {
     display.print(String(out_temp, 1) + String(" C"));
     display.setCursor(15, 98);
     display.print(String(out_hum, 1) + String(" %"));
-    if (0.12 < rad)
-    {
-      display.setCursor(8, 112);
-      display.print(String(rad, 2) + String(" uSV"));
-    }
-    else
-    {
-      display.setCursor(3, 112);
-      display.print(String(pres, 1) + String(" hPa"));
-    }
+    display.setCursor(3, 112);
+    display.print(String(pres, 1) + String(" hPa"));    
   }
   else
   {
