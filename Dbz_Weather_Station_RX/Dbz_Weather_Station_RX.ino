@@ -17,11 +17,11 @@
 
 //Variables
 uint64_t pipe = 0xE8E8F0F0E1LL;
-char ssid[] = "xxx";
-char WifiPassword[] = "xxx";
-char access_code[] = "xxx";
+char ssid[] = "Falunet2";
+char WifiPassword[] = "19850317";
+char access_code[] = "14815162342";
 
-const int postingInterval = 60; //in every 10 minutes (600 seconds)
+const int postingInterval = 600; //in every 10 minutes (600 seconds)
 const int measuringInterval = 10 * 1000; //in every 10 seconds
 const int outdoorCheckInterval = 30; //must be transmission in 30 times measuring
 int outdoorCheckCounter = 0;
@@ -40,8 +40,8 @@ RtcDS3231<TwoWire> rtc(Wire);
 DHTesp dht;
 RF24 radio(CE_PIN, CSN_PIN);
 
-void setup() {
-  
+void setup()
+{  
   Serial.begin(9600);
   dht.setup(DHT_PIN, DHTesp::DHT22);
   delay(dht.getMinimumSamplingPeriod());
@@ -69,20 +69,20 @@ void setup() {
     connectingCounter++;
   }
   if (WiFi.status() == WL_CONNECTED)
-    {
-      isWiFiConnected = true;
-    }
+  {
+    isWiFiConnected = true;
+  }
   display.clearDisplay();
 }
 
-void loop() {
-
+void loop()
+{
   CollectingValues();
   if (measuringCounter == postingInterval) 
-  {    
+  {
     if (isWiFiConnected && isOutdoorUnitOK) SendDatasToWifi();
     measuringCounter = 0;
-  }  
+  }
   if (CheckDifferences()) RefreshDisplay();
   delay(measuringInterval);
   measuringCounter++;
@@ -90,8 +90,8 @@ void loop() {
   //Debugger();
 }
 
-void Debugger() {
-  
+void Debugger()
+{  
   Serial.print("measuringCounter: ");
   Serial.println(measuringCounter);
   Serial.print("outdoorCheckCounter: ");
@@ -100,11 +100,12 @@ void Debugger() {
   Serial.println(isOutdoorUnitOK);
 }
 
-void CollectingValues() {
-
-  //IN DHT values  
+void CollectingValues()
+{
+  //IN DHT values
   in_temp = dht.getTemperature();
   in_hum = dht.getHumidity();
+  
   //IN RTC values
   RtcDateTime now = rtc.GetDateTime();
   year = now.Year();
@@ -126,10 +127,10 @@ void CollectingValues() {
     OutdoorTransmissionWasNotOK();
 }
 
-void SendDatasToWifi() {
-
+void SendDatasToWifi()
+{
   HTTPClient http;
-  String uri = "http://....../writer.php"; 
+  String uri = "http://something.com/writer.php"; 
   String data = "?access_code=";
   data += access_code;
   data += "&in_temp=";
@@ -144,23 +145,27 @@ void SendDatasToWifi() {
   data += pres;
   
   bool httpResult = http.begin(uri + data);
-  if (!httpResult) {
+  if (!httpResult)
+  {
     Serial.println("Invalid HTTP request:");
     Serial.println(uri + data);
   }
   int httpCode = http.GET();
-  if (httpCode > 0) { // Request has been made
+  if (httpCode > 0) // Request has been made
+  {
     Serial.printf("HTTP status: %d\n", httpCode);
     String payload = http.getString();
     Serial.println(payload);
-  } else { // Request could not be made
+  }
+  else // Request could not be made
+  {
     Serial.printf("HTTP request failed. Error: %s\r\n", http.errorToString(httpCode).c_str());
   }
   http.end();
 }
 
-bool CheckDifferences() {
-
+bool CheckDifferences()
+{
   if (  (in_temp_prev  != in_temp)  ||
         (in_hum_prev   != in_hum)   ||
         (out_temp_prev != out_temp) ||
@@ -172,8 +177,8 @@ bool CheckDifferences() {
     return false;
 }
 
-void ActualizePrevValues() {
-  
+void ActualizePrevValues()
+{  
   in_temp_prev  = in_temp;
   in_hum_prev   = in_hum;
   out_temp_prev = out_temp;
@@ -182,8 +187,8 @@ void ActualizePrevValues() {
   minute_prev   = minute;  
 }
 
-void RefreshDisplay() {
-
+void RefreshDisplay()
+{
   //Clear the display
   display.clearDisplay();
   
@@ -278,14 +283,14 @@ void RefreshDisplay() {
   display.display();
 }
 
-void OutdoorTransmissionWasOK() {
-  
+void OutdoorTransmissionWasOK()
+{  
   outdoorCheckCounter = 0;
   isOutdoorUnitOK = true;
 }
 
-void OutdoorTransmissionWasNotOK() {
-
+void OutdoorTransmissionWasNotOK()
+{
   outdoorCheckCounter++;
   if (outdoorCheckCounter > outdoorCheckInterval)
   {

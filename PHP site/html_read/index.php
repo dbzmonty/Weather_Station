@@ -130,29 +130,6 @@ window.onload = function () {
         }]
     });
     HumidityChart.render(); //Rendering
-
-	/*
-    //RadChart
-    var RadChart = new CanvasJS.Chart("RadChartContainer", {
-        animationEnabled: false,
-        zoomEnabled: false,
-        title: {
-            text: "Radiation (in uSV/h)"
-        },
-        axisX: {
-			valueFormatString: "HH:mm"
-		},
-		axisY: {
-            includeZero: true,			
-			suffix: " uSV/h"
-        },
-        data: [{
-			type: "line",
-			dataPoints: getRadData()
-		}]
-    });
-    RadChart.render(); //Rendering
-	*/
 }
 
 //in_temp
@@ -230,27 +207,6 @@ function getHumidityData() {
 	
 	return dataPoints;
 }
-
-/*
-//rad
-function getRadData() {
-    var dataPoints = [];
-	
-	var temp_year = <?php echo json_encode($reading_timestamp_year) ?>;
-	var temp_month = <?php echo json_encode($reading_timestamp_month) ?>;
-	var temp_day = <?php echo json_encode($reading_timestamp_day) ?>;
-	var temp_hour = <?php echo json_encode($reading_timestamp_hour) ?>;
-	var temp_minute = <?php echo json_encode($reading_timestamp_minute) ?>;
-	var temp_second = <?php echo json_encode($reading_timestamp_second) ?>;	
-	var temp_rad = <?php echo json_encode($rad) ?>;
-	
-	for (var i = 0; i < temp_rad.length; i++) { 
-		dataPoints.push({ x: new Date(parseInt(temp_year[i]), parseInt(temp_month[i]), parseInt(temp_day[i]), parseInt(temp_hour[i]), parseInt(temp_minute[i])), y: parseFloat(temp_rad[i]) });
-	}
-	
-	return dataPoints;
-}
-*/
 </script>
 <style>
   .fakeimg {
@@ -270,7 +226,7 @@ function getRadData() {
 <!--Navbar-->
 
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-  <a class="navbar-brand" href="https://google.com/">Navbar</a>
+  <a class="navbar-brand" href="https://something.com/">Navbar</a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
     <span class="navbar-toggler-icon"></span>
   </button>
@@ -300,10 +256,10 @@ function getRadData() {
 		  <h3>Linkek</h3>		  
 		  <ul class="nav nav-pills flex-column">
 			<li class="nav-item">
-			  <a class="nav-link active" href="https://google.com/">Diagram</a>
+			  <a class="nav-link active" href="https://something.com/">Diagram</a>
 			</li>
 			<li class="nav-item">
-			  <a class="nav-link" href="https://google.com/raw/">Lista</a>
+			  <a class="nav-link" href="https://something.com/raw/">Lista</a>
 			</li>			
 		  </ul>
 		  <hr class="d-sm-none">
@@ -324,12 +280,6 @@ function getRadData() {
 		  <div id="HumidityChartContainer" style="height: 370px; width: 100%;"></div>
 		  <hr>
 		  <br>
-		  <!--Radiation-->
-		  <!--
-		  <div id="RadChartContainer" style="height: 370px; width: 100%;"></div>
-		  <hr>
-		  <br>
-		  -->	  
 		</div>
   </div>
 </div>

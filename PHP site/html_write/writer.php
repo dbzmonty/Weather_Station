@@ -1,5 +1,7 @@
 <?php
 
+//https://something.com/writer.php?access_code=14815162342&in_temp=22.1&in_hum=62.1&out_temp=32.2&out_hum=42.2&pres=1008.33
+
 require_once('./dbaccess.php');
 
 $access_code = mysqli_real_escape_string($db, $_GET['access_code']);
